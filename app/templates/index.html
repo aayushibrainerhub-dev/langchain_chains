@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Resume Analyzer</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        background: #f4f7fb;
+        color: #1f2937;
+      }
+      .container {
+        max-width: 1000px;
+        margin: 40px auto;
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      }
+      h1 { margin-top: 0; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+      textarea, button { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #d1d5db; font-size: 14px; }
+      textarea { min-height: 220px; resize: vertical; }
+      button { background: #2563eb; color: white; cursor: pointer; margin-top: 10px; }
+      button:hover { background: #1d4ed8; }
+      .result-card { margin-top: 20px; padding: 16px; background: #eff6ff; border-radius: 12px; }
+      .pill { display: inline-block; margin: 4px; padding: 6px 10px; background: #dbeafe; border-radius: 999px; font-size: 13px; }
+      .meta { color: #4b5563; font-size: 14px; }
+      @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Resume Analyzer</h1>
+      <p class="meta">Paste a resume and a job description to analyze how well the candidate matches the role.</p>
+      <div class="grid">
+        <div>
+          <label for="resume">Resume</label>
+          <textarea id="resume" placeholder="Paste your resume text here..."></textarea>
+        </div>
+        <div>
+          <label for="jobDescription">Job Description</label>
+          <textarea id="jobDescription" placeholder="Paste the target job description here..."></textarea>
+        </div>
+      </div>
+      <button onclick="analyze()">Analyze Match</button>
+      <div id="result" class="result-card" style="display:none;"></div>
+    </div>
+
+    <script>
+      async function analyze() {
+        const resume = document.getElementById('resume').value;
+        const jobDescription = document.getElementById('jobDescription').value;
+        const resultBox = document.getElementById('result');
+
+        if (!resume || !jobDescription) {
+          resultBox.style.display = 'block';
+          resultBox.innerHTML = '<strong>Please provide both a resume and a job description.</strong>';
+          return;
+        }
+
+        resultBox.style.display = 'block';
+        resultBox.innerHTML = '<p>Analyzing...</p>';
+
+        try {
+          const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resume, job_description: jobDescription })
+          });
+
+          const data = await response.json();
+          const matched = data.matched_skills || [];
+          const skills = data.skills || [];
+          const suggestions = data.suggestions || [];
+
+          resultBox.innerHTML = `
+            <h3>Match Score: ${data.score}</h3>
+            <p><strong>Role:</strong> ${data.extracted_profile?.role || 'N/A'}</p>
+            <p><strong>Years of experience:</strong> ${data.extracted_profile?.years_of_experience || 'N/A'}</p>
+            <p><strong>Matched skills:</strong></p>
+            <div>${matched.map(skill => '<span class="pill">' + skill + '</span>').join('')}</div>
+            <p><strong>Detected skills:</strong></p>
+            <div>${skills.map(skill => '<span class="pill">' + skill + '</span>').join('')}</div>
+            <p><strong>Suggestions:</strong></p>
+            <ul>${suggestions.map(item => '<li>' + item + '</li>').join('')}</ul>
+          `;
+        } catch (error) {
+          resultBox.innerHTML = '<p>Something went wrong while analyzing the resume.</p>';
+        }
+      }
+    </script>
+  </body>
+</html>
